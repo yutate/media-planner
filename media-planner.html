@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メディアプランニング AI v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0c;
+  --surface: #131316;
+  --surface2: #1c1c21;
+  --border: #26262d;
+  --accent: #00e5ff;
+  --accent2: #7b61ff;
+  --accent3: #39ff6e;
+  --warn: #ffb800;
+  --text: #e8e8f0;
+  --muted: #777;
+  --dim: #444;
+  --danger: #ff4d4d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-weight: 300; min-height: 100vh; line-height: 1.7; }
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: radial-gradient(ellipse 60% 40% at 80% 10%, rgba(0,229,255,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse 50% 30% at 10% 80%, rgba(123,97,255,0.04) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+.wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px; position: relative; z-index: 1; }
+
+/* Header */
+.hdr { margin-bottom: 48px; }
+.hdr-eyebrow { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.hdr-eyebrow::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent), transparent); max-width: 120px; }
+h1 { font-size: clamp(26px, 4.5vw, 40px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+h1 em { font-style: normal; color: var(--accent); }
+.hdr-sub { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.v-badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); padding: 2px 8px; border-radius: 4px; margin-left: 10px; vertical-align: middle; }
+
+/* Card */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; margin-bottom: 20px; }
+.card-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.card-title .num { background: rgba(0,229,255,0.12); border: 1px solid rgba(0,229,255,0.2); border-radius: 4px; padding: 1px 7px; font-size: 11px; }
+
+/* AI Selector */
+.ai-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.ai-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 15px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; font-weight: 400; transition: all 0.18s; white-space: nowrap; }
+.ai-btn:hover { border-color: var(--muted); color: var(--text); }
+.ai-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+.ai-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.8; flex-shrink: 0; }
+.free-tag { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(57,255,110,0.1); color: var(--accent3); border: 1px solid rgba(57,255,110,0.2); padding: 1px 5px; border-radius: 3px; margin-left: 3px; }
+.key-area { display: none; } .key-area.active { display: block; }
+.key-row { display: flex; gap: 10px; align-items: center; }
+.key-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; padding: 9px 13px; outline: none; transition: border-color 0.18s; }
+.key-row input:focus { border-color: var(--accent); }
+.btn-sm { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 15px; border-radius: 7px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; white-space: nowrap; transition: all 0.18s; }
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.key-st { font-family: 'DM Mono', monospace; font-size: 11px; margin-top: 7px; }
+.key-st.ok { color: var(--accent3); }
+.key-hint { font-size: 12px; color: var(--dim); margin-top: 7px; }
+
+/* Output mode row */
+.mode-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mode-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.mode-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; padding: 8px 12px; outline: none; cursor: pointer; transition: border-color 0.18s; }
+.mode-select:focus { border-color: var(--accent); }
+.mode-select option { background: var(--surface2); }
+.json-toggle-wrap { display: flex; align-items: center; gap: 8px; }
+.toggle-switch { position: relative; width: 36px; height: 20px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 12px; height: 12px; left: 3px; top: 3px; background: var(--dim); border-radius: 50%; transition: all 0.2s; }
+.toggle-switch input:checked + .toggle-slider { background: rgba(57,255,110,0.15); border-color: var(--accent3); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--accent3); }
+.toggle-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
+.mode-desc { font-size: 11px; color: var(--dim); margin-left: auto; }
+
+/* Form fields */
+.fg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.fg.c1 { grid-template-columns: 1fr; }
+.fg.c3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 600px) { .fg, .fg.c3 { grid-template-columns: 1fr; } }
+.f { display: flex; flex-direction: column; gap: 5px; }
+label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+label .req { color: var(--danger); margin-left: 3px; }
+label .opt { color: var(--dim); font-size: 10px; margin-left: 4px; }
+input[type="text"], input[type="number"], select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 300; padding: 9px 13px; transition: border-color 0.18s, box-shadow 0.18s; outline: none; width: 100%; }
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.06); }
+select option { background: var(--surface2); }
+textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+.sec-hd { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent2); letter-spacing: 0.12em; text-transform: uppercase; margin: 24px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.field-hint { font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+/* Media rows */
+.media-row { display: grid; grid-template-columns: 140px 1fr 1fr 1fr 1fr 36px; gap: 8px; align-items: end; margin-bottom: 8px; }
+@media (max-width: 700px) { .media-row { grid-template-columns: 1fr 1fr; } }
+.constraint-row { display: grid; grid-template-columns: 160px 80px 80px 36px; gap: 8px; align-items: end; margin-bottom: 8px; }
+@media (max-width: 600px) { .constraint-row { grid-template-columns: 1fr 1fr; } }
+.add-row-btn { display: flex; align-items: center; gap: 6px; background: transparent; border: 1px dashed var(--border); border-radius: 7px; color: var(--muted); padding: 8px 14px; font-size: 12px; cursor: pointer; transition: all 0.18s; margin-top: 4px; }
+.add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+.del-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--dim); width: 32px; height: 32px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.18s; flex-shrink: 0; align-self: end; }
+.del-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+/* Submit */
+.submit-btn { width: 100%; padding: 15px; background: var(--accent); color: #0a0a0c; border: none; border-radius: 8px; font-family: 'Noto Sans JP', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.04em; margin-top: 8px; }
+.submit-btn:hover:not(:disabled) { background: #33ecff; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,229,255,0.18); }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Error */
+.err { display: none; background: rgba(255,77,77,0.07); border: 1px solid rgba(255,77,77,0.2); border-radius: 7px; padding: 12px 16px; font-size: 13px; color: var(--danger); margin-bottom: 12px; }
+.err.on { display: block; }
+
+/* Loading */
+.loading { display: none; text-align: center; padding: 56px; }
+.loading.on { display: block; }
+.ld-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 14px; }
+.ld-dots span { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: ldp 1.2s ease-in-out infinite; }
+.ld-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--accent2); }
+.ld-dots span:nth-child(3) { animation-delay: 0.4s; background: var(--accent3); }
+@keyframes ldp { 0%,80%,100% { transform: scale(0.5); opacity: 0.3; } 40% { transform: scale(1.1); opacity: 1; } }
+.ld-txt { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+
+/* Result */
+.result { display: none; } .result.on { display: block; }
+.res-hdr { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.res-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; }
+.res-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ai-badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(0,229,255,0.08); color: var(--accent); border: 1px solid rgba(0,229,255,0.18); }
+.mode-badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(123,97,255,0.08); color: var(--accent2); border: 1px solid rgba(123,97,255,0.18); }
+.ghost-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 5px 11px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+.ghost-btn:hover { border-color: var(--muted); color: var(--text); }
+.res-body { padding: 28px 32px; }
+.res-body h2 { font-size: 16px; font-weight: 700; color: var(--accent); margin: 28px 0 10px; padding: 8px 12px; background: rgba(0,229,255,0.04); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
+.res-body h2:first-child { margin-top: 0; }
+.res-body h3 { font-size: 14px; font-weight: 500; color: var(--accent2); margin: 18px 0 6px; }
+.res-body p { font-size: 13px; margin-bottom: 10px; line-height: 1.8; }
+.res-body ul { padding-left: 18px; margin-bottom: 10px; }
+.res-body li { font-size: 13px; line-height: 1.8; margin-bottom: 3px; }
+.res-body strong { color: var(--warn); font-weight: 500; }
+.res-body em { color: var(--accent3); font-style: normal; }
+.res-body table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; }
+.res-body th { background: var(--surface2); color: var(--accent); padding: 8px 11px; text-align: left; font-weight: 500; font-size: 11px; border: 1px solid var(--border); }
+.res-body td { padding: 8px 11px; border: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+.res-body tr:hover td { background: rgba(255,255,255,0.015); }
+.res-body blockquote { border-left: 3px solid var(--accent2); padding: 10px 18px; background: rgba(123,97,255,0.05); margin: 14px 0; border-radius: 0 6px 6px 0; font-size: 13px; color: var(--muted); }
+.res-body pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 14px 0; }
+.res-body code { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent3); }
+
+/* JSON panel */
+.json-panel { display: none; margin-top: 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.json-panel.on { display: block; }
+.json-panel pre { color: var(--accent3); font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+.json-toggle { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.18s; }
+.json-toggle:hover { border-color: var(--accent3); color: var(--accent3); }
+
+/* History */
+.hist-item { border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; margin-bottom: 9px; transition: border-color 0.18s; }
+.hist-item:hover { border-color: var(--accent2); }
+.hist-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+.hist-title { font-size: 13px; font-weight: 500; }
+.hist-date { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--dim); margin-left: 12px; white-space: nowrap; }
+.hist-sub { font-size: 11px; color: var(--muted); margin-bottom: 9px; }
+.hist-acts { display: flex; gap: 7px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-eyebrow">Marketing Science</div>
+    <h1>メディアプランニング<br><em>データドリブン版</em><span class="v-badge">v4</span></h1>
+    <p class="hdr-sub">実績データと仮説を入力して、根拠のある予算配分設計を行います</p>
+  </div>
+
+  <!-- AI + Key + Mode -->
+  <div class="card">
+    <div class="card-title">使用する AI</div>
+    <div class="ai-row">
+      <button class="ai-btn active" data-ai="claude" onclick="selectAI('claude')">
+        <span class="ai-dot"></span>Claude<span style="font-size:10px;opacity:0.5;margin-left:2px">Sonnet</span>
+      </button>
+      <button class="ai-btn" data-ai="haiku" onclick="selectAI('haiku')">
+        <span class="ai-dot"></span>Claude<span style="font-size:10px;opacity:0.5;margin-left:2px">Haiku</span><span class="free-tag">速い</span>
+      </button>
+      <button class="ai-btn" data-ai="gemini" onclick="selectAI('gemini')">
+        <span class="ai-dot"></span>Gemini<span class="free-tag">FREE</span>
+      </button>
+      <button class="ai-btn" data-ai="openai" onclick="selectAI('openai')">
+        <span class="ai-dot"></span>ChatGPT<span style="font-size:10px;opacity:0.5;margin-left:2px">GPT-4o</span>
+      </button>
+    </div>
+
+    <div class="key-area active" id="key-claude">
+      <div class="key-row"><input type="password" id="apiKey-claude" placeholder="sk-ant-..." /><button class="btn-sm" onclick="saveKey('claude')">保存</button></div>
+      <div class="key-st" id="keySt-claude"></div>
+    </div>
+    <div class="key-area" id="key-haiku">
+      <div class="key-row"><input type="password" id="apiKey-haiku" placeholder="sk-ant-...（Sonnetと同じキーで可）" /><button class="btn-sm" onclick="saveKey('haiku')">保存</button></div>
+      <div class="key-st" id="keySt-haiku"></div>
+      <div class="key-hint">AnthropicのAPIキーはSonnetと共通です</div>
+    </div>
+    <div class="key-area" id="key-gemini">
+      <div class="key-row"><input type="password" id="apiKey-gemini" placeholder="AIza..." /><button class="btn-sm" onclick="saveKey('gemini')">保存</button></div>
+      <div class="key-st" id="keySt-gemini"></div>
+      <div class="key-hint">Google AI Studio（aistudio.google.com）で無料取得できます</div>
+    </div>
+    <div class="key-area" id="key-openai">
+      <div class="key-row"><input type="password" id="apiKey-openai" placeholder="sk-..." /><button class="btn-sm" onclick="saveKey('openai')">保存</button></div>
+      <div class="key-st" id="keySt-openai"></div>
+    </div>
+
+    <!-- Output mode + JSON toggle -->
+    <div class="mode-row">
+      <span class="mode-label">出力モード</span>
+      <select class="mode-select" id="outputMode" onchange="onModeChange()">
+        <option value="light">ライト — 予算配分のみ（CV数含む）</option>
+        <option value="standard" selected>標準 — 配分 + CV比較3パターン</option>
+        <option value="full">フル — 全分析（CTR/CVR分解・改善シナリオ）</option>
+      </select>
+      <div class="json-toggle-wrap">
+        <label class="toggle-switch">
+          <input type="checkbox" id="jsonToggle" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">JSON出力</span>
+      </div>
+      <span class="mode-desc" id="modeDesc">Gemini/Haikuに推奨</span>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="card" id="formCard">
+    <div class="card-title"><span class="num">01</span> キャンペーン基本情報</div>
+    <div class="fg">
+      <div class="f"><label>業種・事業内容<span class="req">*</span></label><input type="text" id="industry" placeholder="例：BtoB SaaS / EC / 飲食チェーン" /></div>
+      <div class="f"><label>キャンペーン目的<span class="req">*</span></label>
+        <select id="objective">
+          <option value="">選択してください</option>
+          <option value="認知拡大">認知拡大（ブランド認知・リーチ）</option>
+          <option value="リード獲得">リード獲得（資料請求・問い合わせ）</option>
+          <option value="アプリDL">アプリDL促進</option>
+          <option value="EC購買">EC購買・コンバージョン</option>
+          <option value="来店促進">来店促進</option>
+          <option value="採用">採用・人材</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg c3">
+      <div class="f"><label>月額総予算<span class="req">*</span></label>
+        <select id="budget">
+          <option value="">選択</option>
+          <option value="〜50万円">〜50万円</option>
+          <option value="50〜200万円">50〜200万円</option>
+          <option value="200〜500万円">200〜500万円</option>
+          <option value="500〜1,000万円">500〜1,000万円</option>
+          <option value="1,000万円以上">1,000万円以上</option>
+        </select>
+      </div>
+      <div class="f"><label>期間</label>
+        <select id="duration">
+          <option value="">選択</option>
+          <option value="1ヶ月">1ヶ月（単発）</option>
+          <option value="2〜3ヶ月">2〜3ヶ月</option>
+          <option value="半年">半年</option>
+          <option value="通年">通年</option>
+        </select>
+      </div>
+      <div class="f"><label>BtoB / BtoC<span class="req">*</span></label>
+        <select id="btob">
+          <option value="">選択</option>
+          <option value="BtoC">BtoC（一般消費者）</option>
+          <option value="BtoB">BtoB（法人）</option>
+          <option value="両方">両方</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec-hd">02 — ターゲット</div>
+    <div class="fg">
+      <div class="f"><label>年齢層<span class="req">*</span></label>
+        <select id="age">
+          <option value="">選択</option>
+          <option value="10〜20代">10〜20代（Z世代）</option>
+          <option value="20〜30代">20〜30代（ミレニアル）</option>
+          <option value="30〜40代">30〜40代</option>
+          <option value="40〜50代">40〜50代</option>
+          <option value="50代以上">50代以上</option>
+          <option value="幅広い">幅広い（全年代）</option>
+        </select>
+      </div>
+      <div class="f"><label>ターゲット詳細<span class="opt">（自由記述）</span></label><input type="text" id="targetDetail" placeholder="例：都市部在住の20〜35歳女性、美容意識高め" /></div>
+    </div>
+
+    <div class="sec-hd">03 — 目標KPI</div>
+    <div class="fg c3">
+      <div class="f"><label>目標CPA<span class="opt">（円）</span></label><input type="number" id="targetCPA" placeholder="例：3000" /></div>
+      <div class="f"><label>目標CVR<span class="opt">（%）</span></label><input type="number" id="targetCVR" placeholder="例：2.5" step="0.1" /></div>
+      <div class="f"><label>目標CV数/月</label><input type="number" id="targetCV" placeholder="例：100" /></div>
+    </div>
+
+    <div class="sec-hd">04 — 過去実績データ<span style="font-size:11px;color:var(--dim);margin-left:8px;text-transform:none;font-family:'Noto Sans JP'">（あるほど精度が上がります）</span></div>
+    <div class="media-block" id="mediaRows"></div>
+    <button class="add-row-btn" onclick="addMediaRow()">＋ 媒体を追加</button>
+
+    <div class="sec-hd">05 — 補足情報</div>
+    <div class="fg c1"><div class="f"><label>試したい・気になる媒体<span class="opt">（実績なし）</span></label><input type="text" id="wishMedia" placeholder="例：TikTok、LinkedIn広告" /></div></div>
+    <div class="fg c1"><div class="f"><label>制約・懸念事項</label><textarea id="constraints" placeholder="例：クリエイティブ制作リソースが少ない / 内製運用 / 競合CPCが高い"></textarea></div></div>
+    <div class="fg c1"><div class="f"><label>その他・自由記述</label><textarea id="freeNote" placeholder="例：YouTubeの視認率が低かった / 季節性あり / 特定地域集中"></textarea></div></div>
+
+    <div class="sec-hd">06 — 媒体別制約<span style="font-size:11px;color:var(--dim);margin-left:8px;text-transform:none;font-family:'Noto Sans JP'">（任意：最低・最大配分を指定）</span></div>
+    <div class="media-constraint-block" id="constraintRows"></div>
+    <button class="add-row-btn" onclick="addConstraintRow()">＋ 制約を追加</button>
+    <div class="field-hint" style="margin-top:8px">例：TikTok 最低20% 最大50% ／ Google 最低10% ／ YouTube 最大30%</div>
+
+    <div class="err" id="errMsg">エラーが発生しました。APIキーを確認するか、しばらくしてからお試しください。</div>
+    <button class="submit-btn" id="submitBtn" onclick="generate()">分析を実行する →</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="ld-dots"><span></span><span></span><span></span></div>
+    <div class="ld-txt" id="ldTxt">分析中...</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result card" id="result">
+    <div class="res-hdr">
+      <div class="res-label">// 分析レポート</div>
+      <div class="res-acts">
+        <span class="ai-badge" id="aiBadge"></span>
+        <span class="mode-badge" id="modeBadge"></span>
+        <button class="json-toggle" id="jsonToggleBtn" onclick="toggleJSON()" style="display:none">{ } JSON</button>
+        <button class="ghost-btn" onclick="downloadHTML()">↓ HTML</button>
+        <button class="ghost-btn" onclick="downloadPDF()">↓ PDF</button>
+        <button class="ghost-btn" id="saveBtn" onclick="saveToHistory()">☆ 保存</button>
+        <button class="ghost-btn" onclick="resetForm()">← 再入力</button>
+      </div>
+    </div>
+    <div class="res-body" id="resBody"></div>
+    <div class="json-panel" id="jsonPanel">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:10px;letter-spacing:0.1em">// JSON OUTPUT</div>
+      <pre id="jsonOut"></pre>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card" id="histSection" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin:0;border:none;padding:0">// 保存済みプラン</div>
+      <button class="ghost-btn" onclick="clearHistory()">全削除</button>
+    </div>
+    <div id="histList"></div>
+  </div>
+
+</div>
+<script>
+let currentAI = 'claude';
+let lastInput = {};
+const AI_LABELS = { claude: 'Claude Sonnet', haiku: 'Claude Haiku', gemini: 'Gemini 2.0 Flash', openai: 'GPT-4o' };
+const MODE_LABELS = { light: 'ライト', standard: '標準', full: 'フル' };
+const MODE_DESCS = {
+  light: 'Gemini / Haikuに推奨 — 最速・最安',
+  standard: 'バランス型 — 通常業務に最適',
+  full: 'Claude Sonnet推奨 — 詳細分析'
+};
+
+// ===== SYSTEM PROMPTS =====
+
+// 軽量版（Gemini/Haiku用 ライト・標準）
+const SYS_LIGHT = `デジタル広告メディアプランニングの専門家として予算配分を設計する。
+
+【絶対ルール】
+- CPA入力あり→必ず数値計算（想定CV=予算÷CPA）
+- 推測・感覚での配分禁止
+- CPA判明2媒体未満→最適化不可と明示してテスト配分
+- 役割（主力/補完/テスト）は配分確定後に定義
+
+【最適化手順】
+1. CV効率(1/CPA)を算出し順位付け
+2. 効率順に配分（上限50%・最低2媒体・実績なし20%上限）
+3. CV数を再計算して検証
+
+【ユーザー制約がある場合は必ず遵守すること】`;
+
+// フル版（Claude Sonnet/GPT-4o用）
+const SYS_FULL = `デジタル広告メディアプランニング・マーケティングサイエンスの専門家として、データに基づく予算配分を設計する。
+
+【絶対ルール】
+- CPA入力あり→必ず数値計算（想定CV=予算÷CPA）
+- 推測・感覚での配分禁止。全配分に根拠を明記
+- CPA判明2媒体未満→⚠️最適化不可と冒頭に明示してテスト配分
+- 役割（主力/補完/テスト）は配分確定後に定義
+
+【最適化手順（必須）】
+1. CV効率(1/CPA)を算出し順位付け
+2. 効率順に配分（上限50%・最低2媒体・実績なし20%上限）
+3. CV数を再計算して検証
+
+【CTR/CVR分解】
+- CPA ≒ (CPM÷CTR)÷CVR で分解
+- CTR低い→クリエイティブ課題 / CVR低い→LP課題 / 両方低い→ターゲ課題
+- CVRが高い媒体→予算優先 / CTR高くCVR低い→中配分 / 両方低い→削減/テスト
+
+【ユーザー制約がある場合は必ず遵守すること】
+
+【媒体ベンチマーク（補完用）】
+Meta: CPM600〜1500円/CPC30〜120円 | Google検索: CPC100〜1000円 | PMAX: CPM100〜400円
+YouTube: CPV3〜15円 | TikTok: CPM500〜1200円 | LINE: CPM400〜900円
+X: CPE30〜100円 | LinkedIn: CPC200〜600円`;
+
+// ===== USER PROMPTS by MODE =====
+
+function buildUserPrompt(mode, data, includeJSON) {
+  const { industry, objective, budget, duration, btob, age, targetDetail,
+          targetCPA, targetCVR, targetCV, mediaStr, hasPastData,
+          wishMedia, constraints, freeNote, constraintStr, kpiStr } = data;
+
+  const base = `【基本情報】
+- 業種：${industry} / 目的：${objective} / 予算：${budget} / 期間：${duration||'未定'}
+- BtoB/BtoC：${btob} / ターゲット年齢：${age}
+- ターゲット詳細：${targetDetail||'なし'} / 制約：${constraints||'なし'}
+
+【KPI】${kpiStr}
+【過去実績データの有無】${hasPastData}
+${mediaStr}【試したい媒体（実績なし）】${wishMedia||'なし'}
+${freeNote ? '【備考】' + freeNote : ''}
+${constraintStr ? '【媒体別制約】\n' + constraintStr : ''}
+【重要指示】
+- 過去実績がある場合はそれを最優先で判断
+- 実績がない媒体はテスト扱いまたは除外
+- 主力/補完/テストに分けて設計（配分確定後に定義）
+- 配分理由を必ず説明。曖昧な一般論は禁止`;
+
+  let outputSpec = '';
+
+  if (mode === 'light') {
+    outputSpec = `
+【出力形式】
+## 1. 戦略サマリー（3文以内）
+## 2. 予算配分案
+表：媒体名|CV効率(1/CPA)|配分%|月額|想定CV数|役割|判断理由|信頼度
+## 2-1. CV数サマリー
+- 配分前CV数（過去実績）
+- 配分後CV数
+- 差分
+## 3. リスクと対策（箇条書き）
+## 4. 最初の1ヶ月のアクション（箇条書き）`;
+  } else if (mode === 'standard') {
+    outputSpec = `
+【出力形式】
+## 1. 戦略サマリー（3〜5文）
+## 2. 予算配分案（最適化配分）
+表：媒体名|CV効率(1/CPA)|配分%|月額|想定CV数|役割|判断理由|信頼度
+## 2-1. CV数サマリー（3パターン比較）
+表：パターン|配分概要|合計CV数|最適配分との差分
+（最適配分・均等配分・過去配分ベースの3パターン）
+## 3. 実績あり媒体の評価
+## 4. 実績なし媒体の扱い
+## 5. リスクと対策
+## 6. 最初の1ヶ月のアクション
+## 7. 追加で必要なデータ`;
+  } else {
+    outputSpec = `
+【出力形式】
+## 1. 戦略サマリー（3〜5文）
+## 2. 予算配分案（最適化配分）
+表：媒体名|CV効率(1/CPA)|配分%|月額|想定CV数|役割|判断理由|信頼度
+## 2-1. CV数サマリー（3パターン比較）
+表：パターン|配分概要|合計CV数|最適配分との差分
+（最適配分・均等配分・過去配分ベースの3パターン）
+## 2-2. パフォーマンス分解（CTR/CVR分析）
+表：媒体名|CTR評価|CVR評価|ボトルネック|改善余地|推奨アクション
+## 2-3. 改善シナリオ分析
+改善余地がある媒体：CTR+20% / CVR+20% それぞれのCPA・CV数を再計算
+## 3. 実績あり媒体の評価（スケール限界も言及）
+## 4. 実績なし媒体の扱い
+## 5. リスクと対策
+## 6. 最初の1ヶ月のアクション
+## 7. 追加で必要なデータ`;
+  }
+
+  const jsonSpec = includeJSON ? `
+最後に必ず以下のJSON形式で出力すること（\`\`\`jsonブロックで）：
+\`\`\`json
+{
+  "strategy_summary": "",
+  "budget_allocation": [{"channel":"","cv_efficiency":0,"allocation_percent":0,"monthly_budget":"","estimated_cv":0,"role":"","reason":"","confidence":"","bottleneck":"","improvement_potential":""}],
+  "cv_summary": {"optimized":0,"equal_distribution":0,"past_distribution":0},
+  "main_channels":[],"support_channels":[],"test_channels":[],
+  "risks":[],"next_actions":[],"additional_data_needed":[]
+}
+\`\`\`` : '';
+
+  return base + outputSpec + jsonSpec;
+}
+
+// ===== MODE UI =====
+function onModeChange() {
+  const mode = document.getElementById('outputMode').value;
+  document.getElementById('modeDesc').textContent = MODE_DESCS[mode];
+}
+
+// ===== AI SELECT =====
+function selectAI(ai) {
+  currentAI = ai;
+  document.querySelectorAll('.ai-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.ai-btn[data-ai="' + ai + '"]').classList.add('active');
+  document.querySelectorAll('.key-area').forEach(function(a) { a.classList.remove('active'); });
+  document.getElementById('key-' + ai).classList.add('active');
+
+  // Auto-suggest mode
+  if (ai === 'gemini' || ai === 'haiku') {
+    const sel = document.getElementById('outputMode');
+    if (sel.value === 'full') { sel.value = 'standard'; onModeChange(); }
+  }
+}
+
+function saveKey(ai) {
+  const key = document.getElementById('apiKey-' + ai).value.trim();
+  if (!key) return;
+  localStorage.setItem('mpv4key_' + ai, key);
+  const el = document.getElementById('keySt-' + ai);
+  el.textContent = '✓ 保存しました'; el.className = 'key-st ok';
+}
+
+window.addEventListener('load', function() {
+  addMediaRow();
+  ['claude','haiku','gemini','openai'].forEach(function(ai) {
+    const saved = localStorage.getItem('mpv4key_' + ai);
+    if (saved) {
+      document.getElementById('apiKey-' + ai).value = saved;
+      const el = document.getElementById('keySt-' + ai);
+      el.textContent = '✓ 保存済み'; el.className = 'key-st ok';
+    }
+  });
+  onModeChange();
+  renderHistory();
+});
+
+// ===== MEDIA ROWS =====
+let rowId = 0;
+function addMediaRow(d) {
+  rowId++; const id = rowId; d = d || {};
+  const row = document.createElement('div');
+  row.className = 'media-row'; row.id = 'mrow-' + id;
+  row.innerHTML =
+    '<div class="f"><label>媒体名</label><input type="text" id="mn-'+id+'" placeholder="例：Meta広告" value="'+(d.name||'')+'"/></div>' +
+    '<div class="f"><label>月額実績（円）</label><input type="number" id="mb-'+id+'" placeholder="500000" value="'+(d.budget||'')+'"/></div>' +
+    '<div class="f"><label>CPA（円）</label><input type="number" id="mcpa-'+id+'" placeholder="3000" value="'+(d.cpa||'')+'"/></div>' +
+    '<div class="f"><label>CTR（%）</label><input type="number" id="mctr-'+id+'" step="0.01" placeholder="1.2" value="'+(d.ctr||'')+'"/></div>' +
+    '<div class="f"><label>CVR（%）</label><input type="number" id="mcvr-'+id+'" step="0.01" placeholder="2.5" value="'+(d.cvr||'')+'"/></div>' +
+    '<button class="del-btn" onclick="delRow('+id+')">×</button>';
+  document.getElementById('mediaRows').appendChild(row);
+}
+function delRow(id) { const el = document.getElementById('mrow-' + id); if (el) el.remove(); }
+function getMediaData() {
+  const result = [];
+  document.querySelectorAll('.media-row').forEach(function(row) {
+    const rid = row.id.replace('mrow-', '');
+    const name = document.getElementById('mn-' + rid) ? document.getElementById('mn-' + rid).value.trim() : '';
+    if (!name) return;
+    result.push({ name, budget: document.getElementById('mb-'+rid).value, cpa: document.getElementById('mcpa-'+rid).value, ctr: document.getElementById('mctr-'+rid).value, cvr: document.getElementById('mcvr-'+rid).value });
+  });
+  return result;
+}
+
+// ===== CONSTRAINT ROWS =====
+let constraintId = 0;
+function addConstraintRow() {
+  constraintId++; const id = constraintId;
+  const row = document.createElement('div');
+  row.className = 'constraint-row'; row.id = 'crow-' + id;
+  row.innerHTML =
+    '<div class="f"><label>媒体名</label><input type="text" id="cn-'+id+'" placeholder="例：TikTok"/></div>' +
+    '<div class="f"><label>最低%</label><input type="number" id="cmin-'+id+'" placeholder="20" min="0" max="100"/></div>' +
+    '<div class="f"><label>最大%</label><input type="number" id="cmax-'+id+'" placeholder="50" min="0" max="100"/></div>' +
+    '<button class="del-btn" onclick="delConstraintRow('+id+')">×</button>';
+  document.getElementById('constraintRows').appendChild(row);
+}
+function delConstraintRow(id) { const el = document.getElementById('crow-' + id); if (el) el.remove(); }
+function getConstraintData() {
+  const result = [];
+  document.querySelectorAll('.constraint-row').forEach(function(row) {
+    const rid = row.id.replace('crow-', '');
+    const name = document.getElementById('cn-'+rid) ? document.getElementById('cn-'+rid).value.trim() : '';
+    if (!name) return;
+    result.push({ name, min: document.getElementById('cmin-'+rid).value, max: document.getElementById('cmax-'+rid).value });
+  });
+  return result;
+}
+
+// ===== MARKDOWN =====
+function md2html(text) {
+  const lines = text.split('\n');
+  let html = '', inUl = false, inTable = false, tableRows = [], inCode = false, codeBlock = '';
+  function flushUl() { if (inUl) { html += '</ul>'; inUl = false; } }
+  function flushTable() {
+    if (!inTable) return;
+    if (tableRows.length > 0) {
+      let t = '<table>';
+      tableRows.forEach(function(row, i) {
+        const cells = row.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+        const tag = i === 0 ? 'th' : 'td';
+        t += '<tr>' + cells.map(function(c) { return '<'+tag+'>'+fmt(c)+'</'+tag+'>'; }).join('') + '</tr>';
+      });
+      html += t + '</table>';
+    }
+    inTable = false; tableRows = [];
+  }
+  lines.forEach(function(line) {
+    if (line.startsWith('```')) {
+      if (!inCode) { flushUl(); flushTable(); inCode = true; codeBlock = ''; return; }
+      else { html += '<pre><code>' + codeBlock + '</code></pre>'; inCode = false; codeBlock = ''; return; }
+    }
+    if (inCode) { codeBlock += (codeBlock ? '\n' : '') + line; return; }
+    if (/^\|[-| ]+\|/.test(line)) return;
+    if (line.startsWith('|') && line.endsWith('|')) { flushUl(); inTable = true; tableRows.push(line.slice(1,-1)); return; }
+    if (inTable) flushTable();
+    if (line.startsWith('## ')) { flushUl(); html += '<h2>'+fmt(line.slice(3))+'</h2>'; }
+    else if (line.startsWith('### ')) { flushUl(); html += '<h3>'+fmt(line.slice(4))+'</h3>'; }
+    else if (/^[-*] /.test(line)) { if (!inUl) { html += '<ul>'; inUl = true; } html += '<li>'+fmt(line.slice(2))+'</li>'; }
+    else if (/^\d+\. /.test(line)) { if (!inUl) { html += '<ul>'; inUl = true; } html += '<li>'+fmt(line.replace(/^\d+\. /,''))+'</li>'; }
+    else if (line.startsWith('> ')) { flushUl(); html += '<blockquote>'+fmt(line.slice(2))+'</blockquote>'; }
+    else if (line.trim() === '') { flushUl(); }
+    else { flushUl(); html += '<p>'+fmt(line)+'</p>'; }
+  });
+  flushUl(); flushTable();
+  return html;
+}
+function fmt(s) {
+  return s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/`(.+?)`/g,'<code>$1</code>');
+}
+
+// ===== API CALLS =====
+async function callClaude(key, sys, user, model) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: model || 'claude-sonnet-4-20250514', max_tokens: 4000, system: sys, messages: [{ role: 'user', content: user }] })
+  });
+  if (!res.ok) throw new Error(res.status);
+  const d = await res.json();
+  return d.content.map(function(i) { return i.text || ''; }).join('');
+}
+async function callGemini(key, sys, user) {
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system_instruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { maxOutputTokens: 4000 } })
+  });
+  if (!res.ok) throw new Error(res.status);
+  const d = await res.json();
+  return (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts)
+    ? d.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : '';
+}
+async function callOpenAI(key, sys, user) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({ model: 'gpt-4o', max_tokens: 4000, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }] })
+  });
+  if (!res.ok) throw new Error(res.status);
+  const d = await res.json();
+  return (d.choices && d.choices[0] && d.choices[0].message) ? d.choices[0].message.content : '';
+}
+
+// ===== GENERATE =====
+async function generate() {
+  const key = localStorage.getItem('mpv4key_' + currentAI) || document.getElementById('apiKey-' + currentAI).value.trim();
+  if (!key) { alert(AI_LABELS[currentAI] + ' のAPIキーを入力・保存してください'); return; }
+
+  const industry = document.getElementById('industry').value.trim();
+  const objective = document.getElementById('objective').value;
+  const budget = document.getElementById('budget').value;
+  const duration = document.getElementById('duration').value;
+  const btob = document.getElementById('btob').value;
+  const age = document.getElementById('age').value;
+  const targetDetail = document.getElementById('targetDetail').value.trim();
+  const targetCPA = document.getElementById('targetCPA').value;
+  const targetCVR = document.getElementById('targetCVR').value;
+  const targetCV = document.getElementById('targetCV').value;
+  const mediaData = getMediaData();
+  const constraintData = getConstraintData();
+  const wishMedia = document.getElementById('wishMedia').value.trim();
+  const constraints = document.getElementById('constraints').value.trim();
+  const freeNote = document.getElementById('freeNote').value.trim();
+  const outputMode = document.getElementById('outputMode').value;
+  const includeJSON = document.getElementById('jsonToggle').checked;
+
+  if (!industry || !objective || !budget || !age || !btob) {
+    alert('必須項目（業種・目的・予算・ターゲット年齢・BtoB/BtoC）を入力してください'); return;
+  }
+
+  // Build strings
+  let mediaStr = '【過去実績データ】\n';
+  const hasPastData = mediaData.length > 0 ? 'あり（以下参照）' : 'なし（業界ベンチマークで補完）';
+  if (mediaData.length === 0) { mediaStr += 'なし\n'; }
+  else { mediaData.forEach(function(m) {
+    mediaStr += '- ' + m.name + '：';
+    if (m.budget) mediaStr += '月額' + Number(m.budget).toLocaleString() + '円';
+    if (m.cpa) mediaStr += ' / CPA¥' + Number(m.cpa).toLocaleString();
+    if (m.ctr) mediaStr += ' / CTR' + m.ctr + '%';
+    if (m.cvr) mediaStr += ' / CVR' + m.cvr + '%';
+    mediaStr += '\n';
+  }); }
+
+  let kpiStr = '\n';
+  if (targetCPA) kpiStr += '目標CPA：¥' + Number(targetCPA).toLocaleString() + '\n';
+  if (targetCVR) kpiStr += '目標CVR：' + targetCVR + '%\n';
+  if (targetCV) kpiStr += '目標CV数：' + targetCV + '/月\n';
+  if (kpiStr === '\n') kpiStr = '未設定\n';
+
+  let constraintStr = '';
+  constraintData.forEach(function(c) {
+    let line = '- ' + c.name + '：';
+    if (c.min) line += '最低' + c.min + '%';
+    if (c.min && c.max) line += '、';
+    if (c.max) line += '最大' + c.max + '%';
+    constraintStr += line + '\n';
+  });
+
+  lastInput = { industry, objective, budget, duration, btob, age, targetDetail, targetCPA, targetCVR, targetCV, mediaData, constraintData, wishMedia, constraints, freeNote, outputMode, includeJSON };
+
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('errMsg').classList.remove('on');
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('loading').classList.add('on');
+  document.getElementById('ldTxt').textContent = AI_LABELS[currentAI] + ' [' + MODE_LABELS[outputMode] + '] で分析中...';
+
+  // Select system prompt: light for Gemini/Haiku on light/standard, full otherwise
+  const useLightSys = (currentAI === 'gemini' || currentAI === 'haiku') && outputMode !== 'full';
+  const sys = useLightSys ? SYS_LIGHT : SYS_FULL;
+
+  // Add user constraints to system if present
+  const sysWithConstraints = constraintStr
+    ? sys + '\n\n【ユーザー制約（必ず遵守）】\n' + constraintStr + '制約違反の配分は禁止。制約内でCV最大化を行うこと。'
+    : sys;
+
+  const promptData = { industry, objective, budget, duration, btob, age, targetDetail, targetCPA, targetCVR, targetCV, mediaStr, hasPastData, wishMedia, constraints, freeNote, constraintStr, kpiStr };
+  const user = buildUserPrompt(outputMode, promptData, includeJSON);
+
+  try {
+    let text = '';
+    if (currentAI === 'claude') text = await callClaude(key, sysWithConstraints, user, 'claude-sonnet-4-20250514');
+    else if (currentAI === 'haiku') text = await callClaude(key, sysWithConstraints, user, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'gemini') text = await callGemini(key, sysWithConstraints, user);
+    else text = await callOpenAI(key, sysWithConstraints, user);
+
+    let jsonData = null;
+    if (includeJSON) {
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
+      if (jsonMatch) { try { jsonData = JSON.parse(jsonMatch[1]); } catch(e) { jsonData = null; } }
+    }
+
+    document.getElementById('loading').classList.remove('on');
+    document.getElementById('aiBadge').textContent = AI_LABELS[currentAI];
+    document.getElementById('modeBadge').textContent = MODE_LABELS[outputMode];
+    document.getElementById('saveBtn').textContent = '☆ 保存';
+    document.getElementById('resBody').innerHTML = md2html(text);
+    document.getElementById('result').classList.add('on');
+
+    const jsonBtn = document.getElementById('jsonToggleBtn');
+    if (includeJSON && jsonData) {
+      document.getElementById('jsonOut').textContent = JSON.stringify(jsonData, null, 2);
+      jsonBtn.style.display = 'inline-block';
+    } else {
+      jsonBtn.style.display = 'none';
+    }
+
+  } catch (err) {
+    document.getElementById('loading').classList.remove('on');
+    document.getElementById('formCard').style.display = 'block';
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('errMsg').classList.add('on');
+    console.error(err);
+  }
+}
+
+function resetForm() {
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('submitBtn').disabled = false;
+}
+function toggleJSON() { document.getElementById('jsonPanel').classList.toggle('on'); }
+
+// ===== HISTORY =====
+function saveToHistory() {
+  const entry = { id: Date.now(), date: new Date().toLocaleDateString('ja-JP'), ai: AI_LABELS[currentAI], mode: MODE_LABELS[lastInput.outputMode || 'standard'], industry: lastInput.industry, objective: lastInput.objective, budget: lastInput.budget, html: document.getElementById('resBody').innerHTML, json: document.getElementById('jsonOut').textContent };
+  const history = JSON.parse(localStorage.getItem('mpv4_history') || '[]');
+  history.unshift(entry);
+  localStorage.setItem('mpv4_history', JSON.stringify(history.slice(0, 20)));
+  document.getElementById('saveBtn').textContent = '✓ 保存済';
+  renderHistory();
+}
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('mpv4_history') || '[]');
+  const section = document.getElementById('histSection');
+  if (!history.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  document.getElementById('histList').innerHTML = history.map(function(e) {
+    return '<div class="hist-item"><div class="hist-meta"><div class="hist-title">' + (e.industry||'—') + ' / ' + (e.objective||'—') + '</div><div class="hist-date">' + e.date + ' · ' + e.ai + ' · ' + (e.mode||'—') + '</div></div><div class="hist-sub">' + (e.budget||'') + '</div><div class="hist-acts"><button class="ghost-btn" onclick="loadHistory('+e.id+')">表示</button><button class="ghost-btn" onclick="dlHistory('+e.id+')">↓ HTML</button><button class="ghost-btn" onclick="delHistory('+e.id+')">削除</button></div></div>';
+  }).join('');
+}
+function loadHistory(id) {
+  const e = JSON.parse(localStorage.getItem('mpv4_history') || '[]').find(function(x) { return x.id === id; });
+  if (!e) return;
+  document.getElementById('resBody').innerHTML = e.html;
+  document.getElementById('jsonOut').textContent = e.json || '';
+  document.getElementById('aiBadge').textContent = e.ai;
+  document.getElementById('modeBadge').textContent = e.mode || '';
+  document.getElementById('saveBtn').textContent = '✓ 保存済';
+  const jsonBtn = document.getElementById('jsonToggleBtn');
+  jsonBtn.style.display = e.json ? 'inline-block' : 'none';
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('result').classList.add('on');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function delHistory(id) {
+  const h = JSON.parse(localStorage.getItem('mpv4_history') || '[]').filter(function(x) { return x.id !== id; });
+  localStorage.setItem('mpv4_history', JSON.stringify(h));
+  renderHistory();
+}
+function clearHistory() {
+  if (!confirm('保存済みプランをすべて削除しますか？')) return;
+  localStorage.removeItem('mpv4_history');
+  renderHistory();
+}
+
+// ===== EXPORT =====
+function buildExportHTML(bodyHTML, jsonText, title, ai, mode) {
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>' + title + '</title>' +
+    '<style>body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;max-width:860px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.8}' +
+    'h1{font-size:20px;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:6px}.meta{font-size:11px;color:#888;margin-bottom:28px}' +
+    'h2{font-size:16px;margin:28px 0 10px;padding:7px 12px;background:#f4f4f4;border-left:4px solid #1a1a1a}h3{font-size:14px;color:#333;margin:16px 0 6px}' +
+    'table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px}th{background:#1a1a1a;color:#fff;padding:8px 11px;text-align:left}' +
+    'td{padding:8px 11px;border:1px solid #ddd}tr:nth-child(even) td{background:#fafafa}ul{padding-left:18px}li{margin-bottom:3px}' +
+    'strong{font-weight:700}em{color:#0055cc;font-style:normal}pre{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:14px;font-size:11px;overflow-x:auto}' +
+    '@media print{body{margin:0}}</style></head>' +
+    '<body><h1>' + title + '</h1><div class="meta">生成日：' + new Date().toLocaleDateString('ja-JP') + ' / AI：' + ai + ' / モード：' + mode + '</div>' +
+    bodyHTML + (jsonText && jsonText !== '（JSONの抽出に失敗しました）' ? '<h2>JSON Output</h2><pre>' + jsonText + '</pre>' : '') +
+    '</body></html>';
+}
+function downloadHTML() {
+  const html = buildExportHTML(document.getElementById('resBody').innerHTML, document.getElementById('jsonOut').textContent, 'メディアプランニング分析 - ' + (lastInput.industry||'プラン'), document.getElementById('aiBadge').textContent, document.getElementById('modeBadge').textContent);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })); a.download = 'media-plan-' + Date.now() + '.html'; a.click();
+}
+function dlHistory(id) {
+  const e = JSON.parse(localStorage.getItem('mpv4_history') || '[]').find(function(x) { return x.id === id; });
+  if (!e) return;
+  const html = buildExportHTML(e.html, e.json||'', 'メディアプランニング分析 - ' + (e.industry||'プラン'), e.ai, e.mode||'');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })); a.download = 'media-plan-' + e.id + '.html'; a.click();
+}
+function downloadPDF() {
+  const html = buildExportHTML(document.getElementById('resBody').innerHTML, document.getElementById('jsonOut').textContent, 'メディアプランニング分析 - ' + (lastInput.industry||'プラン'), document.getElementById('aiBadge').textContent, document.getElementById('modeBadge').textContent);
+  const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.onload = function() { w.focus(); w.print(); };
+}
+</script>
+</body>
+</html>
