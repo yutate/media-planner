@@ -110,6 +110,25 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
 .del-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--dim); width: 32px; height: 32px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.18s; flex-shrink: 0; align-self: end; }
 .del-btn:hover { border-color: var(--danger); color: var(--danger); }
 
+/* Import panel */
+.import-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+.import-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.import-tab { flex: 1; padding: 10px; background: transparent; border: none; color: var(--muted); font-size: 12px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.18s; border-bottom: 2px solid transparent; }
+.import-tab:hover { color: var(--text); }
+.import-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,229,255,0.04); }
+.import-body { display: none; padding: 14px; }
+.import-body.active { display: block; }
+.import-body textarea { width: 100%; min-height: 100px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; padding: 10px 13px; outline: none; resize: vertical; line-height: 1.6; transition: border-color 0.18s; }
+.import-body textarea:focus { border-color: var(--accent); }
+.import-btn { background: var(--accent); color: #0a0a0c; border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+.import-btn:hover:not(:disabled) { background: #33ecff; }
+.import-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.import-status { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+.import-status.ok { color: var(--accent3); }
+.import-status.err { color: var(--danger); }
+.csv-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.18s; }
+.csv-drop:hover, .csv-drop.drag { border-color: var(--accent); background: rgba(0,229,255,0.04); }
+
 /* Premise panel */
 .premise-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
 .premise-row { display: flex; align-items: center; gap: 8px; }
@@ -188,7 +207,7 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
   <!-- Header -->
   <div class="hdr">
     <div class="hdr-eyebrow">Marketing Science</div>
-    <h1>メディアプランニング<br><em>データドリブン版</em><span class="v-badge">v4.3</span></h1>
+    <h1>メディアプランニング<br><em>データドリブン版</em><span class="v-badge">v4.4</span></h1>
     <p class="hdr-sub">実績データと仮説を入力して、根拠のある予算配分設計を行います</p>
   </div>
 
@@ -320,6 +339,38 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
     </div>
 
     <div class="sec-hd">04 — 過去実績データ<span style="font-size:11px;color:var(--dim);margin-left:8px;text-transform:none;font-family:'Noto Sans JP'">（あるほど精度が上がります）</span></div>
+
+    <!-- インポートUI -->
+    <div class="import-panel">
+      <div class="import-tabs">
+        <button class="import-tab active" onclick="switchImportTab('text')">📋 テキスト貼り付け</button>
+        <button class="import-tab" onclick="switchImportTab('csv')">📄 CSV読み込み</button>
+      </div>
+
+      <div class="import-body active" id="import-text">
+        <textarea id="importTextArea" placeholder="レポートやメモをそのまま貼り付けてください。AIが媒体名・月額・CPA・CTR・CVRを自動抽出します。
+
+例：
+Meta広告　費用300万円　CPA¥3,200　CTR1.8%
+Google P-Max　¥1,500,000　CPA4,500円
+..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button class="import-btn" onclick="importFromText()">AIで抽出 →</button>
+          <span class="import-status" id="importTextStatus"></span>
+        </div>
+      </div>
+
+      <div class="import-body" id="import-csv">
+        <div class="csv-drop" id="csvDrop" onclick="document.getElementById('csvFile').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleCsvDrop(event)">
+          <div style="font-size:24px;margin-bottom:8px">📄</div>
+          <div style="font-size:13px;color:var(--muted)">CSVをドロップ、またはクリックして選択</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">形式：媒体名, 月額, 運用月数, CPA, CTR, CVR</div>
+        </div>
+        <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCsvFile(event)" />
+        <span class="import-status" id="importCsvStatus"></span>
+      </div>
+    </div>
+
     <div class="media-block" id="mediaRows"></div>
     <button class="add-row-btn" onclick="addMediaRow()">＋ 媒体を追加</button>
 
@@ -636,6 +687,125 @@ window.addEventListener('load', function() {
   updatePremise();
   renderHistory();
 });
+
+// ===== IMPORT =====
+function switchImportTab(tab) {
+  document.querySelectorAll('.import-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.import-body').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.import-tab[onclick*="' + tab + '"]').classList.add('active');
+  document.getElementById('import-' + tab).classList.add('active');
+}
+
+async function importFromText() {
+  const text = document.getElementById('importTextArea').value.trim();
+  if (!text) return;
+
+  const key = localStorage.getItem('mpv4key_' + currentAI) || document.getElementById('apiKey-' + currentAI).value.trim();
+  if (!key) { alert(AI_LABELS[currentAI] + ' のAPIキーを入力・保存してください'); return; }
+
+  const btn = document.querySelector('#import-text .import-btn');
+  const status = document.getElementById('importTextStatus');
+  btn.disabled = true;
+  btn.textContent = '抽出中...';
+  status.textContent = '';
+  status.className = 'import-status';
+
+  const prompt = `以下のテキストから広告媒体の実績データを抽出してください。
+JSONで返してください。フィールドは name（媒体名）, budget（月額・円・数値のみ）, months（運用月数・数値のみ）, cpa（CPA・円・数値のみ）, ctr（CTR・%・数値のみ）, cvr（CVR・%・数値のみ）。
+不明なフィールドは空文字。複数媒体がある場合は配列で。JSONのみ返し、説明文は不要。
+
+テキスト：
+${text}`;
+
+  try {
+    let raw = '';
+    if (currentAI === 'claude') raw = await callClaude(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'haiku') raw = await callClaude(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'gemini') raw = await callGemini(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt);
+    else raw = await callOpenAI(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt);
+
+    const clean = raw.replace(/```json|```/g, '').trim();
+    let parsed = JSON.parse(clean);
+    if (!Array.isArray(parsed)) parsed = [parsed];
+
+    // 既存行をクリアして追加
+    document.getElementById('mediaRows').innerHTML = '';
+    rowId = 0;
+    parsed.forEach(function(d) { if (d.name) addMediaRow(d); });
+
+    status.textContent = '✓ ' + parsed.filter(function(d){ return d.name; }).length + '媒体を抽出しました';
+    status.className = 'import-status ok';
+    document.getElementById('importTextArea').value = '';
+  } catch(e) {
+    console.error('[import] error:', e);
+    status.textContent = '抽出に失敗しました。手動で入力してください。';
+    status.className = 'import-status err';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'AIで抽出 →';
+}
+
+function parseAndLoadCsv(text) {
+  const lines = text.trim().split('\n');
+  const results = [];
+  lines.forEach(function(line) {
+    if (!line.trim() || line.startsWith('#')) return;
+    // ヘッダー行を検出してスキップ
+    if (/媒体|channel|name/i.test(line.split(',')[0])) return;
+    const cols = line.split(',').map(function(c) { return c.trim().replace(/"/g, ''); });
+    if (!cols[0]) return;
+    results.push({
+      name: cols[0] || '',
+      budget: cols[1] ? cols[1].replace(/[^0-9.]/g, '') : '',
+      months: cols[2] ? cols[2].replace(/[^0-9.]/g, '') : '',
+      cpa: cols[3] ? cols[3].replace(/[^0-9.]/g, '') : '',
+      ctr: cols[4] ? cols[4].replace(/[^0-9.]/g, '') : '',
+      cvr: cols[5] ? cols[5].replace(/[^0-9.]/g, '') : ''
+    });
+  });
+  return results;
+}
+
+function handleCsvFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    loadCsvData(e.target.result, file.name);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function handleCsvDrop(event) {
+  event.preventDefault();
+  document.getElementById('csvDrop').classList.remove('drag');
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.name.endsWith('.csv')) {
+    document.getElementById('importCsvStatus').textContent = 'CSVファイルを選択してください';
+    document.getElementById('importCsvStatus').className = 'import-status err';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) { loadCsvData(e.target.result, file.name); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function loadCsvData(text, filename) {
+  const status = document.getElementById('importCsvStatus');
+  try {
+    const data = parseAndLoadCsv(text);
+    if (!data.length) { status.textContent = 'データが見つかりませんでした'; status.className = 'import-status err'; return; }
+    document.getElementById('mediaRows').innerHTML = '';
+    rowId = 0;
+    data.forEach(function(d) { addMediaRow(d); });
+    status.textContent = '✓ ' + data.length + '媒体を読み込みました（' + filename + '）';
+    status.className = 'import-status ok';
+  } catch(e) {
+    status.textContent = '読み込みエラー：' + e.message;
+    status.className = 'import-status err';
+  }
+}
 
 // ===== MEDIA ROWS =====
 let rowId = 0;
