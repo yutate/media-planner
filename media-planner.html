@@ -171,7 +171,7 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
   <!-- Header -->
   <div class="hdr">
     <div class="hdr-eyebrow">Marketing Science</div>
-    <h1>メディアプランニング<br><em>データドリブン版</em><span class="v-badge">v4</span></h1>
+    <h1>メディアプランニング<br><em>データドリブン版</em><span class="v-badge">v4.1</span></h1>
     <p class="hdr-sub">実績データと仮説を入力して、根拠のある予算配分設計を行います</p>
   </div>
 
@@ -648,17 +648,18 @@ async function callClaude(key, sys, user, model) {
 }
 async function callGemini(key, sys, user) {
   const MAX_RETRIES = 3;
-  const BASE_DELAY = 1000;
+  const DELAYS = [10000, 20000, 30000]; // 10秒 → 20秒 → 30秒
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    // 最低1秒のインターバル（初回以外）
     if (attempt > 0) {
-      const delay = BASE_DELAY * Math.pow(2, attempt - 1); // 1s, 2s, 4s
-      document.getElementById('ldTxt').textContent = 'レート制限中... ' + (delay / 1000) + '秒後にリトライ (' + attempt + '/' + (MAX_RETRIES - 1) + ')';
-      await new Promise(function(r) { setTimeout(r, delay); });
+      const wait = DELAYS[attempt - 1];
+      const sec = wait / 1000;
+      document.getElementById('ldTxt').textContent = 'レート制限中... ' + sec + '秒後にリトライ (' + attempt + '/' + MAX_RETRIES + ')';
+      await new Promise(function(r) { setTimeout(r, wait); });
+      document.getElementById('ldTxt').textContent = AI_LABELS[currentAI] + ' でリトライ中... (' + attempt + '/' + MAX_RETRIES + ')';
     }
 
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + key, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ system_instruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { maxOutputTokens: 4000 } })
     });
@@ -669,16 +670,12 @@ async function callGemini(key, sys, user) {
         ? d.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : '';
     }
 
-    // エラー詳細をログ出力
     let errBody = '';
     try { errBody = await res.text(); } catch(e) {}
     console.error('[Gemini] status=' + res.status + ' attempt=' + (attempt + 1) + ' body=' + errBody);
 
-    // 429以外はリトライしない
-    if (res.status !== 429) throw new Error(res.status);
-
-    // 最終リトライも失敗
-    if (attempt === MAX_RETRIES - 1) throw new Error('429');
+    if (res.status !== 429) throw new Error(res.status + ' ' + errBody.slice(0, 100));
+    if (attempt === MAX_RETRIES - 1) throw new Error('429 — ' + MAX_RETRIES + '回リトライしましたが失敗しました');
   }
 }
 async function callOpenAI(key, sys, user) {
@@ -817,9 +814,12 @@ async function generate() {
     isLoading = false;
     document.getElementById('submitBtn').disabled = false;
     const errEl = document.getElementById('errMsg');
-    errEl.textContent = err.message === '429'
-      ? 'レート制限（429）が発生しました。しばらく待ってから再試行してください。'
-      : 'エラーが発生しました（' + err.message + '）。APIキーを確認するか、しばらくしてからお試しください。';
+    const errMsg = err.message || '';
+    if (errMsg.startsWith('429')) {
+      errEl.textContent = '⚠️ レート制限（429）：' + errMsg + '。しばらく時間をおいてから再試行してください。';
+    } else {
+      errEl.textContent = 'エラーが発生しました（' + errMsg + '）。APIキーを確認するか、しばらくしてからお試しください。';
+    }
     errEl.classList.add('on');
   }
 }
